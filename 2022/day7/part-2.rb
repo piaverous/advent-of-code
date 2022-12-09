@@ -1,17 +1,77 @@
 #!/usr/bin/ruby -w
-
+require 'benchmark'
 BEGIN {
-    $title = "AOC2022 Day 7 Part 2"
-    puts "Starting #$title problem solving..."
+    $args = {}
 
-    $lines = File.readlines("input.txt", chomp: true)
-    puts "Read input file with #{$lines.length} lines"
-}
-END {
-    puts "Finished solving #$title problem !"
+    ARGV.each do |arg|
+        match = /--(?<key>.*)/.match(arg)
+        $args[match[:key]] = true # e.g. args['bench'] = true
+    end
 }
 
-stack, $directories = [], {}
+class AdventSolver
+    def initialize(title)
+        @title = title
+        puts "Starting #@title problem solving..."
+
+        @lines = File.readlines("input.txt", chomp: true)
+        puts "Read input file with #{@lines.length} lines"
+    end
+
+    def solve 
+        @lines.each do |line|
+            content = line.split
+            if content[0] == "$"
+                if content[1] == "cd"
+                    if content[2] == ".."
+                        $stack.pop()
+                    else
+                        $stack.push(content[2])
+
+                        # Initialize directory object in map
+                        path = $stack.join("/")
+                        if !$directories[path]
+                            $directories[path] = Directory.new(path)
+                        end
+                    end
+                elsif content[1] == "ls"
+                    next # Do nothing basically, this line contains no info
+                end
+            else
+                path = $stack.join("/")
+                if content[0] == "dir"
+                    $directories[path].addChild(content[1])
+                else
+                    file_size = content[0].to_i
+                    $directories[path].increment(file_size)
+                end
+            end
+        end
+
+        total, target = 70000000, 30000000
+        unused = total - $directories["/"].computeSize
+        missing =  target - unused
+
+        closest = nil
+        $directories.each do |_, dir|
+            size = dir.computeSize
+            if size - missing > 0
+                if !closest
+                    closest = dir
+                else
+                    if size < closest.computeSize
+                        closest = dir
+                    end
+                end
+            end
+        end
+
+        return closest.computeSize
+    end
+end
+
+
+$stack, $directories = [], {}
 class Directory
     def initialize(path)
         @path = path
@@ -42,51 +102,12 @@ class Directory
     end
 end
 
-$lines.each do |line|
-    content = line.split
-    if content[0] == "$"
-        if content[1] == "cd"
-            if content[2] == ".."
-                stack.pop()
-            else
-                stack.push(content[2])
-
-                # Initialize directory object in map
-                path = stack.join("/")
-                if !$directories[path]
-                    $directories[path] = Directory.new(path)
-                end
-            end
-        elsif content[1] == "ls"
-            next # Do nothing basically, this line contains no info
-        end
-    else
-        path = stack.join("/")
-        if content[0] == "dir"
-            $directories[path].addChild(content[1])
-        else
-            file_size = content[0].to_i
-            $directories[path].increment(file_size)
-        end
+$solver = AdventSolver.new("AOC2022 Day 7 Part 2")
+if $args["bench"]
+    Benchmark.bm do |x| 
+        x.report("solving") { $solver.solve }
     end
+else
+    puts $solver.solve
 end
 
-total, target = 70000000, 30000000
-unused = total - $directories["/"].computeSize
-missing =  target - unused
-
-closest = nil
-$directories.each do |_, dir|
-    size = dir.computeSize
-    if size - missing > 0
-        if !closest
-            closest = dir
-        else
-            if size < closest.computeSize
-                closest = dir
-            end
-        end
-    end
-end
-
-puts closest.computeSize
