@@ -26,7 +26,7 @@ end
 
 
 part = __FILE__.split(".")[0][-1]
-day = File.basename(__dir__)[-1]
+day = File.basename(__dir__)[3..]
 
 $solver = AdventSolver.new("AOC2022 Day #{day} Part #{part}")
 if $args["bench"]
