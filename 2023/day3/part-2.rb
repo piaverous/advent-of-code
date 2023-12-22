@@ -1,0 +1,127 @@
+#!/usr/bin/ruby -w
+require 'benchmark'
+BEGIN {
+    $args = {}
+
+    ARGV.each do |arg|
+        match = /--(?<key>.*)/.match(arg)
+        $args[match[:key]] = true # e.g. args['bench'] = true
+    end
+}
+
+
+class AdventSolver
+    def initialize(title)
+        @title = title
+        puts "Starting #@title problem solving..."
+
+        @lines = File.readlines("input.txt", chomp: true)
+        @height = @lines.length
+        @width = @lines[0].length
+        puts "Read input file with #{@height} lines"
+    end
+
+    def has_a_neighbour_symbol(positions)
+        possible_symbols = ["-", "*", "&", "$", "@", "/", "#", "=", "%", "+"]
+        x = positions[0][0]
+        min_y = positions[0][1]
+        max_y = positions[positions.length - 1][1]
+
+        range_y_min = [0, min_y - 1].max
+        range_y_max = [@width - 1, max_y + 1].min
+        range_x_min = [0 , x - 1].max
+        range_x_max = [@height - 1, x + 1].min
+
+        for i in range_x_min..range_x_max
+            for j in range_y_min..range_y_max
+                if possible_symbols.include?(@lines[i][j])
+                    return true
+                end
+            end
+        end
+        return false
+    end
+
+    def find_neighbour_numbers(x, y, numbers)
+        range_y_min = [0, y - 1].max
+        range_y_max = [@width - 1, y + 1].min
+        range_x_min = [0 , x - 1].max
+        range_x_max = [@height - 1, x + 1].min
+
+        neighbours_found = []
+        numbers.each do |num|
+            n = num[0]
+            positions = num[1]
+            found = false
+            positions.each do |pos|
+                if found == true
+                    next
+                end
+                for i in range_x_min..range_x_max
+                    for j in range_y_min..range_y_max
+                        if i == pos[0] && j == pos[1]
+                            neighbours_found.append(n)
+                            found = true
+                        end
+                    end
+                end
+            end
+        end
+        return neighbours_found
+    end
+
+    def solve
+        sum = 0
+        found_numbers = []
+        gear_positions = []
+
+        for i in 0...@height
+            current_number = ""
+            num_positions = []
+            line = @lines[i]
+            for j in 0..@width
+                ch = line[j]
+                if !!(ch =~ /\d/) # Check if char is a digit
+                    num_positions.append([i,j])
+                    current_number += ch
+                    was_number = true
+                else
+                    if was_number
+                        found_numbers.append([current_number, num_positions.dup])
+                        num_positions = []
+                        current_number = ""
+                    end
+                    was_number = false
+                    if ch == "*" # Check if char is a gear
+                        gear_positions.append([i,j])
+                    end
+                end
+            end
+        end
+
+        gear_positions.each do |gear|
+            x = gear[0]
+            y = gear[1]
+            puts "gear at #{x}, #{y}"
+            neighbours = find_neighbour_numbers(x, y, found_numbers)
+            puts "neighbours found : #{neighbours}"
+            if neighbours.length == 2
+                sum += neighbours[0].to_i * neighbours[1].to_i # Add ratio to total sum
+            end
+        end
+        return sum
+    end
+end
+
+
+part = __FILE__.split(".")[0][-1]
+day = File.basename(__dir__)[3..]
+
+$solver = AdventSolver.new("AOC2023 Day #{day} Part #{part}")
+if $args["bench"]
+    Benchmark.bm do |x| 
+        x.report("solving") { $solver.solve }
+    end
+else
+    puts $solver.solve
+end
